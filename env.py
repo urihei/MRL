@@ -35,6 +35,7 @@ class Env(ParallelEnv):
             agent_args.update(shared_data)
         self.agent_name_mapping = dict(zip(self.possible_agents, list(range(self.max_num_agents))))
         self.agent_class = agent_class
+        self.agents = []
 
         # Spaces
         self.observation_spaces = {agent: self.agents_objects[agent].get_observation_space() for agent in
@@ -75,26 +76,32 @@ class Env(ParallelEnv):
         self.t += dt
 
         new_agents = self.scene.visit_all([self.agents_objects[agent] for agent in active_agents], self.t)
+        for agent in new_agents:
+            self.agents_objects[agent].start_agent()
         self.agents += new_agents
 
-        all_rewards = self.agent_class.get_all_rewards()
-        rewards = {}
         termination = {}
         truncated = {}
         for agent in self.possible_agents:
+            termination[agent] = self.agents_objects[agent].is_terminated()
+            if termination[agent] and agent in self.agents:
+                self.agents.remove(agent)
+            truncated[agent] = self.max_steps <= self.n_steps and not termination[agent]
+
+        all_rewards = self.agent_class.get_all_rewards([self.agents_objects[agent] for agent in active_agents])
+        rewards = {}
+        for agent in self.possible_agents:
             rewards[agent] = all_rewards / self.max_num_agents
             if agent in active_agents:
-                ao = self.agents_objects[agent]
-                rewards[agent] += ao.get_reward()
-                termination[agent] = ao.is_terminated()
-                if termination[agent]:
-                    self.agents.remove(agent)
-                else:
-                    truncated[agent] = self.max_steps >= self.n_steps
+                rewards[agent] += self.agents_objects[agent].get_reward()
 
         info = self.info.info_current()
         # end_episode = sum([termination[agent] or truncated[agent] for agent in actions.keys()]) == len(actions)
-        observations = {agent: self.observe(agent) for agent in active_agents}
+        observations = {agent: self.observe(agent) for agent in self.agents}
+        observations.update(
+            {agent: np.zeros(self.observation_spaces[agent].shape) for agent in self.possible_agents
+             if agent not in self.agents})
+
         return observations, rewards, termination, truncated, info
 
     def reset(
@@ -118,13 +125,18 @@ class Env(ParallelEnv):
         # Reset agents.
         for agent in self.possible_agents:
             self.agents_objects[agent].reset()
+        self.scene.set_start_positions(self.agents_objects)
 
         self.info.reset()
-        observations = {agent: ao.scene_to_observation(self.scene) for agent, ao in self.agents_objects.items()}
+        observations = {agent: ao.scene_to_observation(self.scene, list(self.agents_objects.values()))
+                        for agent, ao in self.agents_objects.items()}
         return observations, self.info.get_dict()
 
-    def render(self) -> None | np.ndarray | str | list:
-        fig, axes = plt.subplot()
+    def render(self, axes=None) -> None | np.ndarray | str | list:
+        if axes is None:
+            fig, axes = plt.subplots(nrows=1, ncols=1)
+        else:
+            fig = None
         self.scene.render(axes)
         for agent in self.agents:
             ao = self.agents_objects[agent]
@@ -137,4 +149,5 @@ class Env(ParallelEnv):
         should return a sane observation (though not necessarily the most "up to date" possible)
         at any time after reset() is called.
         """
-        return self.agents_objects[agent].scene_to_observation(self.scene)
+        return self.agents_objects[agent].scene_to_observation(
+            self.scene, [ao for name, ao in self.agents_objects.items() if name in self.agents])

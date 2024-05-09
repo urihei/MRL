@@ -1,0 +1,26 @@
+size:
+  height: 30
+  width: 20
+objects:
+  BaseStart:
+    n_l: 1
+    n_u: 2
+    min_distance: 5
+    param:
+      location:
+        s_p_height: 0.05
+        e_p_height: 0.25
+        s_p_width: 0.05
+        e_p_width: 0.95
+
+  BaseEnd:
+    n_l: 2
+    n_u: 2
+    min_distance: 5
+    param:
+      location:
+        s_p_height: 0.75
+        e_p_height: 0.95
+        s_p_width: 0.05
+        e_p_width: 0.95
+      landing_radius: 1

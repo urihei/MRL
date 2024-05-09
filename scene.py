@@ -1,3 +1,4 @@
+from copy import copy
 from typing import Any, Type, Union
 
 import numpy as np
@@ -6,17 +7,8 @@ from pettingzoo.utils.env import AgentID
 
 from agent import Agent
 from constants import Events
-from scene_object import SceneObject
-
-
-class SampleDef(object):
-    def __init__(self, n_l: int, n_u: int, object_class: Type[SceneObject], object_parameters: dict[str, Any],
-                 min_distance: float = 0.0):
-        self.n_l = n_l
-        self.n_u = n_u
-        self.min_distance = min_distance
-        self.object_class: Type[SceneObject] = object_class
-        self.object_parameters = object_parameters
+from scene_object import SceneObject, StartingPosition
+from tools import SampleDef
 
 
 class Scene(object):
@@ -24,19 +16,25 @@ class Scene(object):
         self.s_height = s_height
         self.s_width = s_width
         self.scene_objects: list[SceneObject] = scene_objects
+        self.active_hash = 0
 
     def visit(self, ao: Agent, t: float) -> bool:
         if not self.is_in_scene(ao.location.height, ao.location.width):
             ao.update_event(Events.out_of_bound, t)
             ao.kill_agent()
             return False
+        return True
 
     def visit_all(self, ao_list: list[Agent], t: float) -> list[AgentID]:
         new_agents_set = set()
+        self.active_hash = 0
         for so in self.scene_objects:
             r = so.visit(ao_list, t)
+            self.active_hash = 2 * self.active_hash + int(so.is_active(t))
             if r is not None:
                 new_agents_set.add(r)
+        for ao in ao_list:
+            ao.set_t(t)
         return list(new_agents_set)
 
     def render(self, axes: Axes):
@@ -49,8 +47,9 @@ class Scene(object):
     def sample(cls, height_s, width_s, sample_list: list[SampleDef]) -> 'Scene':
         o_list = []
         for sample_o in sample_list:
-            n = np.random.randint(sample_o.n_l, sample_o.n_u)
-            object_parameters = sample_o.object_parameters
+            assert sample_o.min_distance >= 0
+            n = np.random.randint(sample_o.n_l, sample_o.n_u + 1)
+            object_parameters = copy(sample_o.object_parameters)
             shared_data = {}
             o_location = []
             for ind in range(n):
@@ -62,7 +61,7 @@ class Scene(object):
                     if hasattr(obj, 'location'):
                         if o_location:
                             min_distance = min([obj.location.get_distance(loc) for loc in o_location])
-                        o_location.append(obj.location)
+                o_location.append(obj.location)
 
                 shared_data = obj.get_shared_data(shared_data)
                 object_parameters.update(shared_data)
@@ -86,3 +85,19 @@ class Scene(object):
 
     def is_in_scene(self, height, width):
         return (0 <= height < self.s_height) and 0 <= width < self.s_width
+
+    def set_start_positions(self, agent_dict: dict[str, 'Agent']):
+        for so in self.scene_objects:
+            if isinstance(so, StartingPosition):
+                so: StartingPosition
+                starting_positions = so.get_all_starting_positions()
+                for agent, location in starting_positions.items():
+                    agent_dict[agent].set_location(location[0], location[1])
+
+    def get_max_state_level(self):
+        max_level = 0
+        for so in self.scene_objects:
+            level = getattr(so, 'state_level', None)
+            if level:
+                max_level = max(level, max_level)
+        return max_level + 1
