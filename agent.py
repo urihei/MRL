@@ -3,16 +3,15 @@ from abc import ABC
 from copy import copy
 from typing import Any, Type
 
-import numpy as np
+import matplotlib.patches as m_patches
+from gymnasium.core import ActType
 from gymnasium.spaces.space import Space
 from matplotlib.axes import Axes
-import matplotlib.patches as m_patches
-from pettingzoo.utils.env import ActionType
 
 import tools
+from constants import Events
 from state import State
 from tools import Location
-from constants import Events
 
 
 class Agent(ABC):
@@ -25,7 +24,7 @@ class Agent(ABC):
         else:
             self.location = None
         self.events_history = []
-        self.action_history: list[ActionType] = []
+        self.action_history: list[ActType] = []
         self.path: list[Location] = []
         self.is_alive: bool = False
         self.is_start: bool = False
@@ -35,7 +34,7 @@ class Agent(ABC):
         self.state = state_class(**state_kwargs)
 
     @abc.abstractmethod
-    def execute_action(self, action: ActionType) -> float:
+    def execute_action(self, action: ActType) -> float:
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -135,7 +134,7 @@ class WalkingAgent(Agent):
         self.dt = dt
         self.action_reward = 0.0
 
-    def execute_action(self, action: ActionType) -> float:
+    def execute_action(self, action: ActType) -> float:
         self.action_reward = 0.0
         if action % 2 == 0:
             self.location.height += (action - 1) * self.step_size

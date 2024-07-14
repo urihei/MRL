@@ -15,8 +15,9 @@ class SceneGenerator(object):
         self.sample_dict = sample_dict
         self.n_agents = n_agents
         self.max_time = max_time
-        self.height_s = self.sample_dict['size']['height']
-        self.width_s = self.sample_dict['size']['width']
+        size_dict = self.sample_dict.get('size', {})
+        self.height_s = size_dict.get('height', 100)
+        self.width_s = size_dict.get('width', 100)
         self.sample_list = self.get_sample_list()
 
     def generator(self):
@@ -37,7 +38,7 @@ class SceneGenerator(object):
         return Scene.sample(self.height_s, self.width_s, self.sample_list)
 
     def get_sample_list(self):
-        objects = self.sample_dict['objects']
+        objects = self.sample_dict.get('objects', {})
         sample_list = []
         for object_name, object_dict in objects.items():
             object_class = scene_object.all_objects[object_name]

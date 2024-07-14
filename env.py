@@ -1,11 +1,12 @@
 import logging
-from copy import copy
-from typing import Any, Type
+from typing import Any, Type, Set
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pettingzoo import ParallelEnv
-from pettingzoo.utils.env import AgentID, ObsType, ActionType
+from gymnasium.core import ObsType, ActType
+from gymnasium.spaces import Dict
+from ray.rllib import MultiAgentEnv
+from ray.rllib.utils.typing import AgentID
 
 import tools
 from agent import Agent
@@ -13,13 +14,16 @@ from info import Info
 from scene import Scene
 
 
-class Env(ParallelEnv):
+class Env(MultiAgentEnv):
     metadata = {"render_modes": ["human"], "name": "simple_env"}
+    env_count = 0
 
     def __init__(self,
                  max_steps: int,
                  number_of_agents, agent_class: Type[Agent], agent_args: dict[str, Any],
                  scene_generator, scene_generator_arg: dict[str, Any]):
+        super().__init__()
+        self.env_count += 1
         # Env base parameters
         self.max_steps = max_steps
         self.n_steps = 0
@@ -27,21 +31,22 @@ class Env(ParallelEnv):
         self.t: float = 0.0
 
         # Agents
-        self.possible_agents = [tools.create_agent_name(i) for i in range(number_of_agents)]
+        self._agent_ids = set([tools.create_agent_name(i) for i in range(number_of_agents)])
+        self.max_num_agents = number_of_agents
         self.agents_objects = {}
-        for name in self.possible_agents:
+        for name in self._agent_ids:
             self.agents_objects[name] = agent_class(name=name, **agent_args)
             shared_data = self.agents_objects[name].get_shared_data()
             agent_args.update(shared_data)
-        self.agent_name_mapping = dict(zip(self.possible_agents, list(range(self.max_num_agents))))
+        self.agent_name_mapping = dict(zip(self._agent_ids, list(range(self.max_num_agents))))
         self.agent_class = agent_class
         self.agents = []
 
         # Spaces
-        self.observation_spaces = {agent: self.agents_objects[agent].get_observation_space() for agent in
-                                   self.possible_agents}
-        self.action_spaces = {agent: self.agents_objects[agent].get_action_space() for agent in
-                              self.possible_agents}
+        self.observation_space: Dict = Dict({agent: self.agents_objects[agent].get_observation_space() for agent in
+                                             self._agent_ids})
+        self.action_space: Dict = Dict({agent: self.agents_objects[agent].get_action_space() for agent in
+                                        self._agent_ids})
 
         # Scene
         self.scene_generator_object = scene_generator(**scene_generator_arg)
@@ -49,10 +54,10 @@ class Env(ParallelEnv):
         self.scene: Scene = self.scene_generator_object.sample()
 
         # Info
-        self.info = Info(self.possible_agents)
+        self.info = Info(self._agent_ids)
 
     def step(
-            self, actions: dict[AgentID, ActionType]
+            self, actions: dict[AgentID, ActType]
     ) -> tuple[
         dict[AgentID, ObsType],
         dict[AgentID, float],
@@ -75,22 +80,23 @@ class Env(ParallelEnv):
             self.info.update_agent(agent, action, ao.get_events(), ao.get_properties())
         self.t += dt
 
-        new_agents = self.scene.visit_all([self.agents_objects[agent] for agent in active_agents], self.t)
+        new_agents, is_end = self.scene.visit_all([self.agents_objects[agent] for agent in active_agents], self.t)
         for agent in new_agents:
             self.agents_objects[agent].start_agent()
         self.agents += new_agents
 
-        termination = {}
-        truncated = {}
-        for agent in self.possible_agents:
-            termination[agent] = self.agents_objects[agent].is_terminated()
-            if termination[agent] and agent in self.agents:
+        for agent in self._agent_ids:
+            if self.agents_objects[agent].is_terminated() and agent in self.agents:
                 self.agents.remove(agent)
-            truncated[agent] = self.max_steps <= self.n_steps and not termination[agent]
+        terminated = sum([self.agents_objects[agent].is_terminated() for agent in self._agent_ids]
+                         ) == len(self._agent_ids) or is_end
+        termination = {agent: terminated for agent in self._agent_ids}
+        truncate = self.max_steps <= self.n_steps
+        truncated = {agent: truncate and not termination[agent] for agent in self._agent_ids}
 
         all_rewards = self.agent_class.get_all_rewards([self.agents_objects[agent] for agent in active_agents])
         rewards = {}
-        for agent in self.possible_agents:
+        for agent in self._agent_ids:
             rewards[agent] = all_rewards / self.max_num_agents
             if agent in active_agents:
                 rewards[agent] += self.agents_objects[agent].get_reward()
@@ -98,35 +104,38 @@ class Env(ParallelEnv):
         info = self.info.info_current()
         # end_episode = sum([termination[agent] or truncated[agent] for agent in actions.keys()]) == len(actions)
         observations = {agent: self.observe(agent) for agent in self.agents}
-        observations.update(
-            {agent: np.zeros(self.observation_spaces[agent].shape) for agent in self.possible_agents
-             if agent not in self.agents})
-
+        # observations.update(
+        #     {agent: np.zeros(self.observation_space[agent].shape).astype(np.float32) for agent in self._agent_ids
+        #      if agent not in self.agents})
+        # print(f"P:{info}")
+        # print(f"observations agents: {list(observations)}, reward: {rewards}, termination: {termination},"
+        #              f"truncated: {truncated}")
         return observations, rewards, termination, truncated, info
 
     def reset(
             self,
             seed: int | None = None,
             options: dict | None = None,
-    ) -> tuple[dict[AgentID, ObsType], dict[AgentID, dict]]:
+    ) -> tuple[dict[AgentID, Any], dict[AgentID, Any]]:
+        # self.logger.info(self.info.info())
         self.n_steps = 0
         self.t = 0.0
+        self.n_epoch += 1
         # Get next scene
         if self.scene_generator is None:
             self.scene_generator = self.scene_generator_object.generator()
         try:
             self.scene = next(self.scene_generator)
         except StopIteration:
-            logging.info("Finish going over all the maps")
+            # self.logger.info("Finish going over all the maps")
             self.info.dataset_times += 1
             self.scene_generator = self.scene_generator_object.generator()
             self.scene = next(self.scene_generator)
 
         # Reset agents.
-        for agent in self.possible_agents:
+        for agent in self._agent_ids:
             self.agents_objects[agent].reset()
         self.scene.set_start_positions(self.agents_objects)
-
         self.info.reset()
         observations = {agent: ao.scene_to_observation(self.scene, list(self.agents_objects.values()))
                         for agent, ao in self.agents_objects.items()}
@@ -151,3 +160,8 @@ class Env(ParallelEnv):
         """
         return self.agents_objects[agent].scene_to_observation(
             self.scene, [ao for name, ao in self.agents_objects.items() if name in self.agents])
+
+    # def get_agent_ids(self) -> Set[AgentID]:
+class EnvR(Env):
+    def __init__(self, kwargs):
+        super().__init__(**kwargs)

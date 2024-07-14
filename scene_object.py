@@ -6,7 +6,7 @@ from typing import Callable
 import numpy as np
 from matplotlib.axes import Axes
 import matplotlib.patches as m_patches
-from pettingzoo.utils.env import AgentID
+from ray.rllib.utils.typing import AgentID
 
 import tools
 from agent import Agent
@@ -54,6 +54,13 @@ class StartingPosition(ABC):
     @abc.abstractmethod
     def get_all_starting_positions(self):
         # Return agent location dictionary
+        raise NotImplementedError()
+
+
+class EndScene(ABC):
+    @abc.abstractmethod
+    def is_end(self):
+        # Return if this object ending condition is fulfilled
         raise NotImplementedError()
 
 
@@ -139,12 +146,13 @@ class BaseStart(LocationObject, StartingPosition):
         return obj
 
 
-class BaseEnd(LocationObject):
+class BaseEnd(LocationObject, EndScene):
 
     def __init__(self, location_param: dict[str, float], time_param: dict[str, float], landing_radius: float):
         super().__init__('base_end', location_param=location_param, state_level=0)
         self.time = Time(**time_param)
         self.landing_radius = landing_radius
+        self.is_reached = False
 
     def visit(self, ao_list: list[Agent], t: float):
         if not self.time.is_active(t):
@@ -152,6 +160,7 @@ class BaseEnd(LocationObject):
         for ao in ao_list:
             if self.location.get_distance(ao.location) < self.landing_radius:
                 ao.complete_task(self.location)
+                self.is_reached = True
 
     def render(self, axes: Axes):
         art = m_patches.Rectangle((self.location.width - 0.5, self.location.height - 0.5), 1, 1,
@@ -196,6 +205,9 @@ class BaseEnd(LocationObject):
 
     def is_active(self, t):
         return self.time.is_active(t)
+
+    def is_end(self):
+        return self.is_reached
 
 
 all_objects = {

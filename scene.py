@@ -3,11 +3,12 @@ from typing import Any, Type, Union
 
 import numpy as np
 from matplotlib.axes import Axes
-from pettingzoo.utils.env import AgentID
+from ray.rllib.utils.typing import AgentID
+
 
 from agent import Agent
 from constants import Events
-from scene_object import SceneObject, StartingPosition
+from scene_object import SceneObject, StartingPosition, EndScene
 from tools import SampleDef
 
 
@@ -16,6 +17,7 @@ class Scene(object):
         self.s_height = s_height
         self.s_width = s_width
         self.scene_objects: list[SceneObject] = scene_objects
+        self.end_objects = [isinstance(so, EndScene) for so in scene_objects]
         self.active_hash = 0
 
     def visit(self, ao: Agent, t: float) -> bool:
@@ -35,7 +37,11 @@ class Scene(object):
                 new_agents_set.add(r)
         for ao in ao_list:
             ao.set_t(t)
-        return list(new_agents_set)
+        finished = False
+        for so in self.end_objects:
+            so: EndScene
+            finished = finished and so.is_end()
+        return list(new_agents_set), finished
 
     def render(self, axes: Axes):
         axes.set_xlim(0, self.s_width)

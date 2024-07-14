@@ -1,10 +1,11 @@
-from pettingzoo.utils.env import ActionType, AgentID
+from gymnasium.core import ActType
+from ray.rllib.utils.typing import AgentID
 
 
 class AgentInfo(object):
     def __init__(self, name: AgentID):
         self.name = name
-        self.actions: list[ActionType] = []
+        self.actions: list[ActType] = []
         self.event_list: list[list[str]] = []
         self.properties_list: dict[str, list[float]] = {}
         self.current_step = 0
@@ -17,7 +18,7 @@ class AgentInfo(object):
         self.properties_list = {k: [] for k in self.properties_list.keys()}
         self.current_step = 0
 
-    def update(self, action: ActionType, events: list[str], properties: dict[str, float]):
+    def update(self, action: ActType, events: list[str], properties: dict[str, float]):
         self.actions.append(action)
         self.event_list.append(events)
         for agent_property, property_value in properties.items():
@@ -30,7 +31,7 @@ class AgentInfo(object):
             d.update({k.capitalize(): [] for k, p_l in self.properties_list.items()})
             return d
         d = {'actions': self.actions[-1], 'events': self.event_list[-1]}  # , 'episode': str(self.episode)
-        d.update({k.capitalize(): p_l for k, p_l in self.properties_list.items()})
+        d.update({k.capitalize(): p_l[-1] if len(p_l) > 0 else 0 for k, p_l in self.properties_list.items()})
         return d
 
     def info_current(self) -> str:
@@ -46,7 +47,7 @@ class AgentInfo(object):
                 "; ".join(f"{k.capitalize()}: {p_l[-1]}" for k, p_l in self.properties_list.items())
                 )
 
-    def get_summery(self) -> tuple[dict[ActionType, int], dict[str, int], dict[str, float]]:
+    def get_summery(self) -> tuple[dict[ActType, int], dict[str, int], dict[str, float]]:
         actions = {}
         for a in self.actions:
             actions[a] = actions.get(a, 0) + 1
@@ -68,11 +69,11 @@ class AgentInfo(object):
 
 
 class Info(object):
-    def __init__(self, agent_list: list[AgentID]):
+    def __init__(self, agent_list: set[AgentID]):
         self.dataset_times = 0
         self.agent_info_object = {agent: AgentInfo(agent) for agent in agent_list}
 
-    def update_agent(self, agent: AgentID, action: ActionType, events: list[str], properties: dict[str, float]):
+    def update_agent(self, agent: AgentID, action: ActType, events: list[str], properties: dict[str, float]):
         self.agent_info_object[agent].update(action, events, properties)
 
     def reset(self):

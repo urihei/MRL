@@ -82,7 +82,7 @@ class State(abc.ABC):
         return {}
 
     @abc.abstractmethod
-    def set_agents(self, locations: list[tuple[float, float]]):
+    def set_agents(self, locations: list[tuple[float, float]], colors: list[int] = None):
         pass
 
 
@@ -95,8 +95,8 @@ class BaseState(State):
         self.ar = None
         self.height_factor: float = height_factor
         self.width_factor: float = width_factor
-        self.state_size = [n_levels + 1, state_height, state_width]
-        self.state = None
+        self.state_size = [state_height, state_width, n_levels + 1]
+        self.state = np.zeros(self.state_size, dtype=np.float32)
         self.scene_hash = -1
         self.agent_location = None
 
@@ -111,22 +111,12 @@ class BaseState(State):
             state_level = getattr(so, 'state_level', -1)
             if state_level >= 0:
                 so: LocationObject
-                #     if so.state_level + 2 > self.size[2]:
-                #         ar = np.zeros((self.size[0], self.size[1], so.state_level + 2), dtype=float)
-                #         if self.ar is not None:
-                #             ar[:, :, :self.size[2]] = self.ar
-                #         self.size[2] = so.state_level + 2
-                #         self.ar = ar
                 locations = self.get_location(so)
                 self.ar[locations[:, 0].astype(int), locations[:, 1].astype(int), state_level + 1] = so.state_value
         self.scene_hash = scene.active_hash
 
     def get_state(self, scene: 'Scene', center: tuple[float, float]):
-        if self.state is None or self.state.shape != (self.size[2], self.state_size[1], self.state_size[2]):
-            self.state = np.zeros((self.size[2], self.state_size[1], self.state_size[2]), dtype=float)
-            self.state_size[0] = self.size[2]
-        else:
-            self.state.fill(0)
+        self.state.fill(0)
         self.update(scene)
         center = self.localize(*center)
         center = int(center[0]), int(center[1])
@@ -146,8 +136,8 @@ class BaseState(State):
             out_w = size_w - center[1]
         e_w = min(self.ar.shape[1], center[1] + size_w)
         out_h_e, out_w_e = out_h + e_h - s_h, out_w + e_w - s_w
-        self.state[:, out_h: out_h_e, out_w: out_w_e] = np.moveaxis(self.ar[s_h: e_h, s_w: e_w, :], 2, 0)
-        return self.state
+        self.state[out_h: out_h_e, out_w: out_w_e, :] = self.ar[s_h: e_h, s_w: e_w, :]
+        return self.state.astype(np.float32)
 
     def reset(self):
         self.ar.fill(0)
