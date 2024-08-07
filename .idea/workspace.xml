@@ -4,18 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="19827574-a004-45a6-a665-c7035e73862b" name="Changes" comment="Train is working">
-      <change beforePath="$PROJECT_DIR$/.idea/HL.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/HL.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="19827574-a004-45a6-a665-c7035e73862b" name="Changes" comment="collecting info by results">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/env.py" beforeDir="false" afterPath="$PROJECT_DIR$/env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/info.py" beforeDir="false" afterPath="$PROJECT_DIR$/info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scene.py" beforeDir="false" afterPath="$PROJECT_DIR$/scene.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scene_generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/scene_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scene_object.py" beforeDir="false" afterPath="$PROJECT_DIR$/scene_object.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/state.py" beforeDir="false" afterPath="$PROJECT_DIR$/state.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,19 +32,19 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.custom_logger.executor": "Run",
-    "Python.custom_metrics_and_callbacks.executor": "Debug",
-    "Python.main.executor": "Run",
-    "Python.scene_generator.executor": "Debug",
-    "Python.scratch_1.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "/home/urihein/PycharmProjects/HL/tools.py",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.custom_logger.executor&quot;: &quot;Run&quot;,
+    &quot;Python.custom_metrics_and_callbacks.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scene_generator.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.scratch_1.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/urihein/PycharmProjects/HL/tools.py&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings>
@@ -206,7 +197,23 @@
       <option name="project" value="LOCAL" />
       <updated>1715254615209</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="collecting info by results">
+      <option name="closed" value="true" />
+      <created>1720970707594</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1720970707594</updated>
+    </task>
+    <task id="LOCAL-00003" summary="collecting info by results">
+      <option name="closed" value="true" />
+      <created>1720970737743</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1720970737743</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -222,7 +229,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Train is working" />
-    <option name="LAST_COMMIT_MESSAGE" value="Train is working" />
+    <MESSAGE value="collecting info by results" />
+    <option name="LAST_COMMIT_MESSAGE" value="collecting info by results" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

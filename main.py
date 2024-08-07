@@ -10,7 +10,7 @@ import torch
 import yaml
 from matplotlib import pyplot as plt
 import ray
-from ray import tune, air
+from ray import tune
 from ray.rllib.algorithms import PPOConfig
 from ray.rllib.algorithms.ppo.ppo_catalog import PPOCatalog
 from ray.rllib.algorithms.ppo.torch.ppo_torch_rl_module import PPOTorchRLModule
@@ -122,6 +122,7 @@ def inference_model(rl_model, env: Env, video_dir: Path, number_of_tests: int = 
 def train(run_args: RunArgs, n_agents, base_path, model_path, env_args, policy_kwargs):
     # ray.init(log_to_driver=False)
     check_point_path = base_path / "check_points"
+    load_model_path = base_path
     check_point_path.mkdir(exist_ok=True)
     run_args = RunArgs()
     env = Env(**env_args)
@@ -151,33 +152,30 @@ def train(run_args: RunArgs, n_agents, base_path, model_path, env_args, policy_k
         ),
         _enable_rl_module_api=NotProvided
     )
-    config = config.env_runners(num_env_runners=12)
+    config = config.env_runners(num_env_runners=10)
     config = config.api_stack(enable_rl_module_and_learner=True, enable_env_runner_and_connector_v2=True)
-    algo_high_lr = config.build()
-    for _ in range(20):
-        train_results = algo_high_lr.train()
-        # Add the phase to the result dict.
-        train_results["phase"] = 1
-        # train.report(train_results)
-        phase_high_lr_time = train_results[NUM_ENV_STEPS_SAMPLED_LIFETIME]
-        logging.info(f"lr time: {phase_high_lr_time}")
-    checkpoint_training_high_lr = algo_high_lr.save()
-    algo_high_lr.stop()
-
-    # stop = {f"{ENV_RUNNER_RESULTS}/{EPISODE_RETURN_MEAN}": 200.0}
-    # results = tune.Tuner(
-    #     config.algo_class,
-    #     param_space=config,
-    #     run_config=air.RunConfig(
-    #         stop=stop,
-    #         verbose=2,
-    #         Plugin our own logger.
-    # callbacks=[
-    #     LegacyLoggerCallback([MyPrintLogger]),
-    # ],
-    # ),
-    # ).fit()
-    train_results.get_best_result()
+    # algo_high_lr = config.build()
+    # for _ in range(20):
+    #     train_results = algo_high_lr.train()
+    #     Add the phase to the result dict.
+    # train_results["phase"] = 1
+    # train.report(train_results)
+    # phase_high_lr_time = train_results[NUM_ENV_STEPS_SAMPLED_LIFETIME]
+    # logging.info(f"lr time: {phase_high_lr_time}")
+    # checkpoint_training_high_lr = algo_high_lr.save()
+    # algo_high_lr.stop()
+    ray.init(_temp_dir=str((base_path).resolve()))
+    stop = {f"{ENV_RUNNER_RESULTS}/{EPISODE_RETURN_MEAN}": 200.0}
+    analysis = tune.run(run_or_experiment="PPO",
+                        stop={"timesteps_total": env_args.get('time_steps', 512)},
+                        checkpoint_config=ray.train.CheckpointConfig(
+                            checkpoint_frequency=(env_args.get('check_point_freq', 512) //
+                                                  env_args.get('batch_size', 512)),
+                            checkpoint_at_end=True),
+                        config=config.to_dict(),
+                        storage_path=base_path.resolve(),
+                        restore=None,
+                        log_to_file=True)
 
 
 def hand_play():
