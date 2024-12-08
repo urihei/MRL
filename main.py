@@ -1,24 +1,22 @@
 import datetime
 import logging
-import os
 import sys
 from logging import handlers
 from pathlib import Path
 
 import numpy as np
-import torch
+import ray
 import yaml
 from matplotlib import pyplot as plt
-import ray
 from ray import tune
 from ray.rllib.algorithms import PPOConfig
 from ray.rllib.algorithms.ppo.ppo_catalog import PPOCatalog
 from ray.rllib.algorithms.ppo.torch.ppo_torch_rl_module import PPOTorchRLModule
-from ray.rllib.core.rl_module.marl_module import MultiAgentRLModuleSpec
-from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
+from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
+from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 from ray.rllib.utils.from_config import NotProvided
-from ray.rllib.utils.metrics import EPISODE_RETURN_MEAN, ENV_RUNNER_RESULTS, NUM_ENV_STEPS_SAMPLED_LIFETIME
-from ray.tune.logger import LegacyLoggerCallback, CSVLogger, JsonLogger, NoopLogger
+from ray.rllib.utils.metrics import EPISODE_RETURN_MEAN, ENV_RUNNER_RESULTS
+from ray.tune.logger import NoopLogger
 
 from Logging import Logging
 from agent import WalkingAgent
@@ -136,9 +134,9 @@ def train(run_args: RunArgs, n_agents, base_path, model_path, env_args, policy_k
     config = config.multi_agent(policies={"p0"}, policy_mapping_fn=lambda aid, *args, **kwargs: "p0")
     config = config.framework("torch").debugging(logger_config={'type': NoopLogger})
     config = config.rl_module(
-        rl_module_spec=MultiAgentRLModuleSpec(
+        rl_module_spec=MultiRLModuleSpec(
             module_specs={
-                "p0": SingleAgentRLModuleSpec(
+                "p0": RLModuleSpec(
                     module_class=PPOTorchRLModule,
                     observation_space=env.observation_space['agent_0'],
                     action_space=env.action_space['agent_0'],
